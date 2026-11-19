@@ -1,6 +1,6 @@
 # ROADMAP: Gauge
 
-Last updated: 2026-11-09T14:40Z (update Drips Wave 11 submission packet and sibling comparison)
+Last updated: 2026-11-19T09:57Z (test the account-read pool, contain rule panics and build the identity fetcher lazily)
 Roadmap version: 3
 
 This file is the single source of truth for remaining work. It is read before every task and updated after every change.
@@ -40,7 +40,7 @@ The repository is 100% ready when every task in Phases 0 to 6 is done and every 
 | 4 | Dogfood and release v0.1.0 | 2 | 9 | 22% |
 | 5 | v0.2 features | 3 | 11 | 27% |
 | 6 | Release v0.2.0 and community | 0 | 5 | 0% |
-| 7 (backlog) | Backlog | 0 | 4 | 0% |
+| 7 (backlog) | Backlog | 3 | 7 | 42% |
 | **Phases 0 to 6** | **Readiness total** | **56** | **79** | **70%** |
 | Gates | G1 to G10 | 3 | 10 | 30% |
 <!-- PROGRESS:END -->
@@ -226,6 +226,9 @@ Constraint on the two remaining experimental tasks: Gauge never builds or submit
 - [ ] **7.2** Claimable balances, liquidity pool shares and sponsorship analysis.
 - [ ] **7.3** Alert integrations (probably never; JSON and CI cover it).
 - [ ] **7.4** Cross-check issued assets against `stellar.toml` currencies.
+- [x] **7.32** Test that account reads peak at the concurrency limit and every account is still observed. M. Deps: none. Done when: `internal/run/semaphore_peak_test.go` adds `TestAccountReadsPeakAtTheLimit` with four accounts and `Concurrency: 2`; the fake source blocks each read on a channel, records the peak in flight with atomics and returns a distinct snapshot per ID; the test waits for exactly two reads, asserts a third does not start, releases all, then asserts peak 2 and all four IDs in the report. (done 2026-11-19: `go test ./internal/run -run TestAccountReadsPeakAtTheLimit -race -count=1` passes; moving the slot send after `src.Account` starts four reads and fails the third-read assertion.)
+- [x] **7.33** Test that one panicking rule produces one `src-rule-panic` finding on that account only. S. Deps: none. Done when: `internal/run/panic_containment_test.go` adds `TestOnePanicOneFinding` over three accounts where one and three panic and two returns a real finding; the panicking accounts each carry exactly one HIGH `src-rule-panic`, the real finding survives unchanged, the total is three, the exit is `model.ExitSource`, and the same run without a panic exits `model.ExitFindings`. (done 2026-11-19: `go test ./internal/run -run TestOnePanicOneFinding -race -count=1` passes; appending the panic finding instead of substituting it fails the per-account count.)
+- [x] **7.34** Build the identity fetcher only when an account publishes a home domain. M. Deps: none. Done when: `internal/run/identity_lazy_test.go` adds `TestIdentityFetcherBuiltOnlyWhenNeeded` with a counting factory; all-missing and all-domainless runs build nothing and return the expected findings, and a run with one domain builds once and fetches once. (done 2026-11-19: `go test ./internal/run -run TestIdentityFetcherBuiltOnlyWhenNeeded -race -count=1` passes; the factory is built once per run after the first eligible account is found and shared by every worker.)
 
 ## 6. Dependency map (critical path)
 
@@ -276,7 +279,7 @@ Newest first. One row per merged change.
 
 | Date (UTC) | Change | Tasks |
 |---|---|---|
-| 2026-11-09 | Updated Drips Wave submission packet (docs/WAVE_SUBMISSION.md) for Wave 11: confirmed 200 unit tests passing, all 16 rules registered, OpenSSF Scorecard at 6.8 with live badge, live documentation site at https://posture-sec.github.io/guage/, dynamic README metric sync, and updated sibling comparison data across org repositories. | none ticked |
+| 2026-11-19 | Three run-package tests and the lazy identity fetcher. `TestAccountReadsPeakAtTheLimit` pins four accounts through a two-slot pool with a blocking fake source, proving a third read waits and all four are observed. `TestOnePanicOneFinding` proves a panicking rule substitutes one HIGH `src-rule-panic` per account, leaves another account's real finding untouched and exits 3. `identify` now collects eligible accounts before building the fetcher, so a run with no observed home domain makes no factory call and cannot fail on construction, and `ARCHITECTURE.md` 6.9 records the lazy build. | 7.32, 7.33, 7.34 |
 | 2026-11-09 | Finalized project naming by removing all occurrences of "working name" across repository documentation, PRD, architecture, and roadmap files. Implemented dynamic README metrics synchronization (`scripts/sync_readme.py`) generating live Shields.io endpoint JSON files under `site/data/` for 200 tests and 16 rules, and enforced with `--check` in the `roadmap-check` workflow. | none ticked |
 | 2026-11-09 | Add Docs Live badge to README and prominent navigation links to the 7-page live documentation site. | none ticked |
 | 2026-11-09 | Task 5.11, the site's motion layer, on the owner's instruction to take animation inspiration from land-book.com across the org's docs sites. `site/assets/motion.css` and `motion.js` are loaded by all seven pages: sections, cards, ledger rows and tables drift up 22px as they enter the viewport with a 70ms sibling stagger, the hero plays a staged entrance in 90ms steps with the paper report card a longer 0.9s rise, the report then drifts up to 18px under scroll, nav underlines slide in, cards lift on hover, and scrollbars carry the palette. Everything is gated behind `prefers-reduced-motion: no-preference`, and the script returns before touching the DOM when reduce is set, verified by emulation: no motion attribute, no reveal classes, content fully visible. Verification was headless Chrome driven over CDP rather than eyeballing: all seven pages scrolled end to end, every reveal target intersected, zero elements stuck hidden, zero left carrying the reveal class after the entrance, zero console errors, the theme toggle dark to light and back, and a 390px render of the index. Two defects found and fixed on the way: a transition needs a painted before-state, so observation starts after two animation frames (defer scripts run before first paint, and above-fold sections were otherwise appearing instantly with the reveal class stuck on them), and a 1400ms fallback cleans up any element whose transition never runs. The layer is written to be shared verbatim with the Airlock and corpus sites: the accent resolves through each site's own tokens rather than a hardcoded color, and the scrollbar styling is static CSS rather than script-injected so it holds under Airlock's `style-src 'self'` CSP. No CLI change, no dependency, no build step. | 5.11 |

@@ -111,6 +111,9 @@ backlog() {
     '6.3	type: research	area: rules	docs(triage): review external false-positive reports' \
     '6.4	type: research	area: docs	docs(decisions): decide funding and applications (D-07)' \
     '6.5	type: docs	area: docs	docs(outreach): contact issuers, anchors and treasury teams' \
+    '7.32	type: test	area: run	test(run): cap in-flight account reads at the concurrency limit' \
+    '7.33	type: test	area: run	test(run): one panicking rule produces one src-rule-panic finding' \
+    '7.34	type: bug	area: run	fix(run): build the identity fetcher only when a domain needs it' \
     'G1	type: test	area: rules	gate: every P0 requirement has passing tests' \
     'G2	type: test	area: rules	gate: every scenario has a fixture and expected findings' \
     'G3	type: test	area: cli	gate: fail-closed paths all exit non-zero' \

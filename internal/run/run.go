@@ -289,13 +289,29 @@ func fetchAll(ctx context.Context, src source.Source, endpoint string, accounts 
 // An unreachable document is not an error here: id-toml-unreachable turns it into a
 // warning, the way acct-missing turns a 404 into a finding. Only a run that cannot
 // be trusted fails, which today means a fetcher that will not build or a context
-// that ended mid-stage. The bound is the same one the account reads used, so a run
-// never holds more sockets open than --concurrency allows.
+// that ended mid-stage. The fetcher is built only once an account with a home domain
+// is known, so a run that fetches nothing cannot fail on construction. The bound is
+// the same one the account reads used, so a run never holds more sockets open than
+// --concurrency allows.
 func identify(ctx context.Context, job Job, observations []observation, mismatch bool) ([]*sep1.Result, error) {
 	results := make([]*sep1.Result, len(observations))
 	if mismatch {
 		return results, nil
 	}
+	eligible := make([]int, 0, len(observations))
+	for i, obs := range observations {
+		if obs.missing || !obs.snapshot.HasHomeDomain() {
+			continue
+		}
+		eligible = append(eligible, i)
+	}
+	if len(eligible) == 0 {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		return results, nil
+	}
+
 	newIdentity := job.NewIdentity
 	if newIdentity == nil {
 		newIdentity = defaultIdentity(job.ToolVersion)
@@ -323,10 +339,7 @@ func identify(ctx context.Context, job Job, observations []observation, mismatch
 		})
 	}
 
-	for i, obs := range observations {
-		if obs.missing || !obs.snapshot.HasHomeDomain() {
-			continue
-		}
+	for _, i := range eligible {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
