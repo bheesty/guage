@@ -89,7 +89,7 @@ func parseFailOn(value string) (model.Severity, bool) {
 }
 
 func validFormat(value string) bool {
-	return value == "text" || value == "json"
+	return value == "text" || value == "json" || value == "markdown"
 }
 
 // reportError prints an orchestrator error and maps it to an exit code. Usage
@@ -131,9 +131,12 @@ func usageError(stderr io.Writer, message string) int {
 
 func render(stdout, stderr io.Writer, result model.Report, format string) int {
 	var err error
-	if format == "json" {
+	switch format {
+	case "json":
 		err = report.JSON(stdout, result)
-	} else {
+	case "markdown":
+		err = report.Markdown(stdout, result)
+	default:
 		err = report.Text(stdout, result)
 	}
 	if err != nil {
