@@ -228,6 +228,31 @@ jobs:
         </section>
 
         <section class="section">
+          <h2>snapshot and diff: baseline tracking</h2>
+          <p><code>snapshot</code> records the current state of accounts declared in a policy file into a baseline JSON file, with schema version 1 and the review banner: <em>"A baseline is a record of state, not an approval of it. Review every threshold and signer before adopting this baseline."</em> <code>diff</code> compares live chain observations against that saved baseline and reports added or removed signers, weight changes, threshold shifts, flag drift and domain changes.</p>
+          <div class="code" data-copy>
+            <div class="code-label"><span>Shell</span></div>
+            <pre>./stellar-gauge snapshot --config gauge.toml --out /secure/baselines/gauge-baseline.json
+./stellar-gauge diff --config gauge.toml --baseline /secure/baselines/gauge-baseline.json
+./stellar-gauge diff --config gauge.toml --baseline /secure/baselines/gauge-baseline.json --format markdown</pre>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Flag</th><th>Command</th><th>Notes</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>--out</td><td>snapshot</td><td>(required) Path to write the baseline JSON file. This is the only file write Gauge performs.</td></tr>
+                <tr><td>--baseline</td><td>diff</td><td>(required) Path to read the saved baseline file. Exits 2 if missing or invalid.</td></tr>
+                <tr><td>--config</td><td>both</td><td>Path to the policy file (default: <code>gauge.toml</code>).</td></tr>
+                <tr><td>--format</td><td>diff</td><td><code>text</code> (default), <code>json</code> or <code>markdown</code>.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="table-caption"><strong>Security guidance: Store baselines outside the audited repository.</strong> Keeping baseline files inside the same repository as the audited code allows an attacker who compromises the repository or PR workflow to simultaneously modify both <code>gauge.toml</code> and the baseline file, hiding malicious changes (threat GB1). Store baselines in a separate restricted repository, private cloud storage (e.g. S3/GCS with strict IAM), or an offline vault.</p>
+        </section>
+
+        <section class="section">
           <h2>Advice by account role</h2>
           <dl class="ledger">
             <div class="ledger-row">
