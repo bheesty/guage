@@ -111,9 +111,9 @@ backlog() {
     '6.3	type: research	area: rules	docs(triage): review external false-positive reports' \
     '6.4	type: research	area: docs	docs(decisions): decide funding and applications (D-07)' \
     '6.5	type: docs	area: docs	docs(outreach): contact issuers, anchors and treasury teams' \
-    '7.32	type: test	area: run	test(run): cap in-flight account reads at the concurrency limit' \
-    '7.33	type: test	area: run	test(run): one panicking rule produces one src-rule-panic finding' \
-    '7.34	type: bug	area: run	fix(run): build the identity fetcher only when a domain needs it' \
+    '7.36	type: test	area: run	test(run): cap in-flight account reads at the concurrency limit' \
+    '7.37	type: test	area: run	test(run): one panicking rule produces one src-rule-panic finding' \
+    '7.38	type: bug	area: run	fix(run): build the identity fetcher only when a domain needs it' \
     '7.8	type: test	area: rules	test(rules): prove rule evaluation never mutates the observed snapshot' \
     '7.9	type: test	area: rules	test(rules): each finding carries the ID of the rule that emitted it' \
     '7.10	type: feature	area: model	feat(model): add Valid and Equal helpers to Thresholds and Flags' \
