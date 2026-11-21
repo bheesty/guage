@@ -1,5 +1,13 @@
 package model
 
+import "errors"
+
+// ErrIdentityNetworkPair reports the one identity state a read cannot produce: a
+// verdict on whether the document named this run's network when the document
+// named no passphrase. Silence and agreement are different facts, so a verdict
+// needs a statement to be about.
+var ErrIdentityNetworkPair = errors.New("identity facts carry a network verdict without a passphrase")
+
 // AccountFacts is what a run read and what its policy declared, kept apart from
 // the findings so a report can be read as observations first and judgements
 // second. Nothing in it can fail a run: report.Exit reads findings only, so a
@@ -19,9 +27,31 @@ package model
 // for a report assembled by hand, and a renderer prints no fact lines for such an
 // account rather than reading a missing block as an answer about the world.
 type AccountFacts struct {
-	Reachability *Reachability  `json:"reachability"`
-	Declared     *DeclaredFacts `json:"declared"`
-	Identity     *IdentityFacts `json:"identity"`
+	Reachability *Reachability   `json:"reachability"`
+	Declared     *DeclaredFacts  `json:"declared"`
+	Identity     *IdentityFacts  `json:"identity"`
+	Trustlines   []TrustlineFact `json:"trustlines,omitempty"`
+}
+
+// TrustlineFact describes exposure to one non-native asset issuer. It contains
+// no balance amounts.
+type TrustlineFact struct {
+	AssetCode    string `json:"asset_code"`
+	AssetIssuer  string `json:"asset_issuer"`
+	Authorized   bool   `json:"authorized"`
+	Clawback     bool   `json:"clawback"`
+	IssuerFlags  *Flags `json:"issuer_flags,omitempty"`
+	IssuerStatus string `json:"issuer_status,omitempty"`
+}
+
+// Validate reports a fact block a producer could not have built from a read.
+// A nil block is nothing to refuse, and an absent identity member is a run that
+// fetched no document rather than an inconsistent one.
+func (f *AccountFacts) Validate() error {
+	if f == nil {
+		return nil
+	}
+	return f.Identity.Validate()
 }
 
 // Reachability is the smallest number of signatures that can authorize each
@@ -43,7 +73,7 @@ type Reachability struct {
 // can hold 21 keys and the drift findings name the ones that disagree.
 type DeclaredFacts struct {
 	Name               string              `json:"name,omitempty"`
-	Role               string              `json:"role"`
+	Role               Role                `json:"role"`
 	ExpectedSigners    *int                `json:"expected_signers"`
 	ExpectedThresholds *DeclaredThresholds `json:"expected_thresholds"`
 	ExpectedFlags      *DeclaredFlags      `json:"expected_flags"`
@@ -104,4 +134,18 @@ type IdentityFacts struct {
 	Version           *string  `json:"version"`
 	Accounts          []string `json:"accounts"`
 	MalformedAccounts int      `json:"malformed_accounts"`
+}
+
+// Validate refuses a block that claims a network verdict it cannot support. A
+// passphrase may stand alone: a document that named one was read, whether or not
+// this run compared it against the audited network. A verdict may not, because
+// there is then no statement for it to be a verdict on.
+func (i *IdentityFacts) Validate() error {
+	if i == nil {
+		return nil
+	}
+	if i.NetworkMatches != nil && i.NetworkPassphrase == nil {
+		return ErrIdentityNetworkPair
+	}
+	return nil
 }

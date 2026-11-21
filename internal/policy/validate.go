@@ -5,7 +5,6 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/posture-sec/guage/internal/model"
 	"github.com/posture-sec/guage/internal/strkey"
@@ -40,7 +39,9 @@ func (c *Config) validate() error {
 		if err := c.Accepts[i].validate(i); err != nil {
 			return err
 		}
-		key := c.Accepts[i].Rule + "\x00" + c.Accepts[i].Account
+		// The network is part of the key, so one account may pin the same rule on
+		// both networks; the same triple twice is still a duplicate.
+		key := c.Accepts[i].Rule + "\x00" + c.Accepts[i].Account + "\x00" + c.Accepts[i].Network
 		if accepted[key] {
 			return withDetail(ErrDuplicateAccept, "accept["+strconv.Itoa(i)+"]")
 		}
@@ -185,13 +186,14 @@ func (a *Acceptance) validate(index int) error {
 	if kind, err := strkey.Classify(a.Account); err != nil || kind != strkey.AccountID {
 		return withDetail(ErrAccept, field+".account")
 	}
+	if a.Network != "" && !validNetwork(a.Network) {
+		return withDetail(ErrNetwork, field+".network")
+	}
 	if strings.TrimSpace(a.Reason) == "" {
 		return withDetail(ErrAccept, field+".reason")
 	}
-	if a.Expires != nil {
-		if _, err := time.Parse("2006-01-02", *a.Expires); err != nil {
-			return withDetail(ErrAccept, field+".expires")
-		}
+	if a.Expires != nil && !a.Expires.Valid() {
+		return withDetail(ErrAccept, field+".expires")
 	}
 	return nil
 }
